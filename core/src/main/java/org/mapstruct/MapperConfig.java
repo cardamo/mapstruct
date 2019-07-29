@@ -189,6 +189,15 @@ public @interface MapperConfig {
     InjectionStrategy injectionStrategy() default InjectionStrategy.FIELD;
 
     /**
+     *
+     *
+     * @return strategy how to pick a constructor for
+     *
+     * @since 1.4
+     */
+    ConstructionStrategy constructionStrategy() default ConstructionStrategy.NO_ARGS_CONSTRUCTOR;
+
+    /**
      * If MapStruct could not find another mapping method or apply an automatic conversion it will try to generate a
      * sub-mapping method between the two beans. If this property is set to {@code true} MapStruct will not try to
      * automatically generate sub-mapping methods.

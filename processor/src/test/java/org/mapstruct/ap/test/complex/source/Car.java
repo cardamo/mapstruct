@@ -10,7 +10,7 @@ import java.util.List;
 
 public class Car {
 
-    private String make;
+    private Make make;
     private int numberOfSeats;
     private Date manufacturingDate;
     private Person driver;
@@ -22,18 +22,18 @@ public class Car {
     }
 
     public Car(String make, int numberOfSeats, Date manufacturingDate, Person driver, List<Person> passengers) {
-        this.make = make;
+        this.make = new Make(make);
         this.numberOfSeats = numberOfSeats;
         this.manufacturingDate = manufacturingDate;
         this.driver = driver;
         this.passengers = passengers;
     }
 
-    public String getMake() {
+    public Make getMake() {
         return make;
     }
 
-    public void setMake(String make) {
+    public void setMake(Make make) {
         this.make = make;
     }
 

@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.lang.model.type.DeclaredType;
 import javax.tools.Diagnostic;
@@ -33,6 +34,7 @@ import org.mapstruct.ap.internal.model.PropertyMapping.PropertyMappingBuilder;
 import org.mapstruct.ap.internal.model.common.BuilderType;
 import org.mapstruct.ap.internal.model.common.Parameter;
 import org.mapstruct.ap.internal.model.common.Type;
+import org.mapstruct.ap.internal.model.common.Constructor;
 import org.mapstruct.ap.internal.model.dependency.GraphAnalyzer;
 import org.mapstruct.ap.internal.model.dependency.GraphAnalyzer.GraphAnalyzerBuilder;
 import org.mapstruct.ap.internal.model.source.BeanMapping;
@@ -54,6 +56,7 @@ import org.mapstruct.ap.internal.util.MapperConfiguration;
 import org.mapstruct.ap.internal.util.Message;
 import org.mapstruct.ap.internal.util.Strings;
 import org.mapstruct.ap.internal.util.accessor.Accessor;
+import org.mapstruct.ap.internal.util.accessor.AccessorType;
 
 /**
  * A {@link MappingMethod} implemented by a {@link Mapper} class which maps one bean type to another, optionally
@@ -64,6 +67,7 @@ import org.mapstruct.ap.internal.util.accessor.Accessor;
 public class BeanMappingMethod extends NormalTypeMappingMethod {
 
     private final List<PropertyMapping> propertyMappings;
+    private final ConstructorMapping constructorMapping;
     private final Map<String, List<PropertyMapping>> mappingsByParameter;
     private final List<PropertyMapping> constantMappings;
     private final Type returnTypeToConstruct;
@@ -198,6 +202,8 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
             // Process the unprocessed defined targets
             handleUnprocessedDefinedTargets();
 
+            ConstructorMapping constructorMapping = createConstructorMapping( );
+
             // report errors on unmapped properties
             reportErrorForUnmappedTargetPropertiesIfRequired();
             reportErrorForUnmappedSourcePropertiesIfRequired();
@@ -240,6 +246,7 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
                 method,
                 existingVariableNames,
                 propertyMappings,
+                constructorMapping,
                 factoryMethod,
                 mapNullToDefault,
                 returnTypeToConstruct,
@@ -377,7 +384,8 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
         private boolean canBeConstructed(Type typeToBeConstructed) {
             return !typeToBeConstructed.isAbstract()
                     && typeToBeConstructed.isAssignableTo( this.method.getResultType() )
-                    && typeToBeConstructed.hasEmptyAccessibleContructor();
+//                    && typeToBeConstructed.hasEmptyAccessibleContructor()
+                ;
         }
 
         private void reportResultTypeFromBeanMappingNotConstructableError(Type resultType) {
@@ -400,14 +408,14 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
                                 method.getResultType()
                 );
             }
-            else if ( !resultType.hasEmptyAccessibleContructor() ) {
-                ctx.getMessager().printMessage(
-                                method.getExecutable(),
-                                BeanMappingPrism.getInstanceOn( method.getExecutable() ).mirror,
-                                Message.GENERAL_NO_SUITABLE_CONSTRUCTOR,
-                                resultType
-                );
-            }
+//            else if ( !resultType.hasEmptyAccessibleContructor() ) {
+//                ctx.getMessager().printMessage(
+//                                method.getExecutable(),
+//                                BeanMappingPrism.getInstanceOn( method.getExecutable() ).mirror,
+//                                Message.GENERAL_NO_SUITABLE_CONSTRUCTOR,
+//                                resultType
+//                );
+//            }
         }
 
         private void reportReturnTypeNotConstructableError(Type returnType) {
@@ -418,13 +426,13 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
                                 returnType
                 );
             }
-            else if ( !returnType.hasEmptyAccessibleContructor() ) {
-                ctx.getMessager().printMessage(
-                                method.getExecutable(),
-                                Message.GENERAL_NO_SUITABLE_CONSTRUCTOR,
-                                returnType
-                );
-            }
+//            else if ( !returnType.hasEmptyAccessibleContructor() ) {
+//                ctx.getMessager().printMessage(
+//                                method.getExecutable(),
+//                                Message.GENERAL_NO_SUITABLE_CONSTRUCTOR,
+//                                returnType
+//                );
+//            }
         }
 
         /**
@@ -685,9 +693,9 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
                             newPropertyMapping = new PropertyMappingBuilder()
                                 .mappingContext( ctx )
                                 .sourceMethod( method )
+                                .targetPropertyName( targetPropertyName )
                                 .targetWriteAccessor( targetProperty.getValue() )
                                 .targetReadAccessor( getTargetPropertyReadAccessor( targetPropertyName ) )
-                                .targetPropertyName( targetPropertyName )
                                 .sourceReference( sourceRef )
                                 .formattingParameters( mapping != null ? mapping.getFormattingParameters() : null )
                                 .selectionParameters( mapping != null ? mapping.getSelectionParameters() : null )
@@ -776,6 +784,44 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
                     }
                 }
             }
+        }
+
+        private ConstructorMapping createConstructorMapping() {
+
+            Map<String, PropertyMapping> processedConstructorMappings = propertyMappings.stream()
+                .filter( PropertyMapping::isConstructorMapping )
+                .collect( Collectors.toMap( PropertyMapping::getName, p -> p ) );
+
+            Constructor constructor = method.getResultType().getConstructors().stream()
+                .filter( candidate -> candidate.getProperties().keySet().equals( processedConstructorMappings.keySet() ) )
+                .findFirst().orElse( null );
+
+            if (constructor != null) {
+                Set<String> constructorOnlyTargetProperties = unprocessedTargetProperties.entrySet()
+                    .stream()
+                    .filter( e -> e.getValue().getAccessorType() == AccessorType.INSTANTIATOR)
+                    .map( Entry::getKey )
+                    .collect( Collectors.toSet());
+
+                constructorOnlyTargetProperties.forEach( unprocessedTargetProperties::remove );
+
+                List<PropertyMapping> mappings = new ArrayList<>();
+
+                for (String propertyName : constructor.getProperties().keySet()) {
+                    if ( processedConstructorMappings.containsKey( propertyName ) ) {
+                        mappings.add( processedConstructorMappings.get( propertyName ) );
+                    }
+                    else {
+                        // TODO: report error - missing constructor arguments
+                    }
+                }
+
+                propertyMappings.removeIf( mapping -> processedConstructorMappings.containsKey( mapping.getName() ) );
+
+                return new ConstructorMapping( constructor, mappings );
+            }
+
+            return null;
         }
 
         private MappingOptions extractAdditionalOptions(String targetProperty, boolean restrictToDefinedMappings) {
@@ -911,9 +957,11 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
         }
     }
 
+    //CHECKSTYLE:OFF
     private BeanMappingMethod(Method method,
                               Collection<String> existingVariableNames,
                               List<PropertyMapping> propertyMappings,
+                              ConstructorMapping constructorMapping,
                               MethodReference factoryMethod,
                               boolean mapNullToDefault,
                               Type returnTypeToConstruct,
@@ -921,6 +969,7 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
                               List<LifecycleCallbackMethodReference> beforeMappingReferences,
                               List<LifecycleCallbackMethodReference> afterMappingReferences,
                               MethodReference finalizerMethod) {
+        //CHECKSTYLE:ON
         super(
             method,
             existingVariableNames,
@@ -933,6 +982,7 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
         this.propertyMappings = propertyMappings;
         this.returnTypeBuilder = returnTypeBuilder;
         this.finalizerMethod = finalizerMethod;
+        this.constructorMapping = constructorMapping;
 
         // intialize constant mappings as all mappings, but take out the ones that can be contributed to a
         // parameter mapping.
@@ -949,6 +999,10 @@ public class BeanMappingMethod extends NormalTypeMappingMethod {
             }
         }
         this.returnTypeToConstruct = returnTypeToConstruct;
+    }
+
+    public ConstructorMapping getConstructorMapping() {
+        return constructorMapping;
     }
 
     public List<PropertyMapping> getConstantMappings() {

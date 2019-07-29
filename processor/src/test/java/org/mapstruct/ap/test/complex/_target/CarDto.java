@@ -9,7 +9,7 @@ import java.util.List;
 
 public class CarDto {
 
-    private String make;
+    private MakeDto make;
     private int seatCount;
     private String manufacturingYear;
     private PersonDto driver;
@@ -21,18 +21,18 @@ public class CarDto {
     }
 
     public CarDto(String make, int seatCount, String manufacturingYear, PersonDto driver, List<PersonDto> passengers) {
-        this.make = make;
+        this.make = new MakeDto(make);
         this.seatCount = seatCount;
         this.manufacturingYear = manufacturingYear;
         this.driver = driver;
         this.passengers = passengers;
     }
 
-    public String getMake() {
+    public MakeDto getMake() {
         return make;
     }
 
-    public void setMake(String make) {
+    public void setMake(MakeDto make) {
         this.make = make;
     }
 

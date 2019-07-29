@@ -8,11 +8,13 @@ package org.mapstruct.ap.internal.model.common;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
@@ -23,6 +25,7 @@ import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -43,6 +46,7 @@ import org.mapstruct.ap.internal.util.accessor.AccessorType;
 
 import static org.mapstruct.ap.internal.util.Collections.first;
 import org.mapstruct.ap.internal.util.NativeTypes;
+import org.mapstruct.ap.internal.util.accessor.InstantiatorAccessor;
 
 /**
  * Represents (a reference to) the type of a bean property, parameter etc. Types are managed per generated source file.
@@ -99,8 +103,7 @@ public class Type extends ModelElement implements Comparable<Type> {
 
     private Type boundingBase = null;
 
-    private Boolean hasEmptyAccessibleContructor;
-
+    private List<Constructor> constructors = null;
     private final Filters filters;
 
     //CHECKSTYLE:OFF
@@ -556,7 +559,11 @@ public class Type extends ModelElement implements Comparable<Type> {
      */
     public Map<String, Accessor> getPropertyWriteAccessors( CollectionMappingStrategyPrism cmStrategy ) {
         // collect all candidate target accessors
-        List<Accessor> candidates = new ArrayList<>( getSetters() );
+        List<Accessor> candidates = new ArrayList<>();
+        getConstructors().forEach( constructor -> constructor.getProperties().values().forEach( property -> {
+            candidates.add( constructor.asWriteAccessorOf( property ) );
+        } ) );
+        candidates.addAll( getSetters() );
         candidates.addAll( getAlternativeTargetAccessors() );
 
         Map<String, Accessor> result = new LinkedHashMap<>();
@@ -647,6 +654,9 @@ public class Type extends ModelElement implements Comparable<Type> {
     private String getPropertyName(Accessor accessor ) {
         if ( accessor.getAccessorType() == AccessorType.FIELD ) {
             return accessorNaming.getPropertyName( (VariableElement) accessor.getElement() );
+        } else if ( accessor.getAccessorType() == AccessorType.INSTANTIATOR ) {
+            // TODO: a place to mind annotations on parameters (@Named, @JsonProperty, etc)
+            return ((InstantiatorAccessor) accessor).getParameter().getName();
         }
         else {
             return accessorNaming.getPropertyName( (ExecutableElement) accessor.getElement() );
@@ -1018,20 +1028,27 @@ public class Type extends ModelElement implements Comparable<Type> {
         return boundingBase;
     }
 
-    public boolean hasEmptyAccessibleContructor() {
+    public List<Constructor> getConstructors() {
+        if (constructors == null) {
+            constructors = ElementFilter.constructorsIn( typeElement.getEnclosedElements() )
+                .stream()
+                .filter( constructor -> constructor.getModifiers().contains( Modifier.PUBLIC ) ) // TODO: this.canAccess ?
+                .sorted( Comparator.comparing( constructor -> -constructor.getParameters().size() ) )
+                .map( constructor -> {
+                    Map<String, Parameter> parameterMap = new LinkedHashMap<>();
+                    typeFactory
+                        .getParameters( (ExecutableType) constructor.asType(), constructor )
+                        .forEach( parameter -> parameterMap.put( parameter.getName(), parameter ) );
 
-        if ( this.hasEmptyAccessibleContructor == null ) {
-            hasEmptyAccessibleContructor = false;
-            List<ExecutableElement> constructors = ElementFilter.constructorsIn( typeElement.getEnclosedElements() );
-            for ( ExecutableElement constructor : constructors ) {
-                if ( !constructor.getModifiers().contains( Modifier.PRIVATE )
-                    && constructor.getParameters().isEmpty() ) {
-                    hasEmptyAccessibleContructor = true;
-                    break;
-                }
-            }
+                    return new Constructor( parameterMap, constructor );
+                } )
+                .collect( Collectors.toList());
         }
-        return hasEmptyAccessibleContructor;
+        return constructors;
+    }
+
+    public boolean hasEmptyAccessibleContructor() {
+        return false; // TODO: remove this method
     }
 
     /**

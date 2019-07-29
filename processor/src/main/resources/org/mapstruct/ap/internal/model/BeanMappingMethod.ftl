@@ -25,7 +25,7 @@
     </#if>
 
     <#if !existingInstanceMapping>
-        <@includeModel object=returnTypeToConstruct/> ${resultName} = <#if factoryMethod??><@includeModel object=factoryMethod targetType=returnTypeToConstruct/><#else>new <@includeModel object=returnTypeToConstruct/>()</#if>;
+        <@includeModel object=returnTypeToConstruct/> ${resultName} = <#if factoryMethod??><@includeModel object=factoryMethod targetType=returnTypeToConstruct/><#else><@constructor/></#if>;
 
     </#if>
     <#list beforeMappingReferencesWithMappingTarget as callback>
@@ -84,3 +84,4 @@
         </#list>
     </@compress>
 </#macro>
+<#macro constructor>new <@includeModel object=resultType/>(<#if !constructorMapping??>)<#else> <@includeModel object=constructorMapping/> )</#if></#macro>

@@ -11,5 +11,7 @@ public enum AccessorType {
     GETTER,
     SETTER,
     ADDER,
-    PRESENCE_CHECKER;
+    PRESENCE_CHECKER,
+    INSTANTIATOR; // constructor or factory with arguments
+
 }

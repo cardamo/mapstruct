@@ -12,9 +12,11 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Mappings;
 import org.mapstruct.ap.test.complex._target.CarDto;
+import org.mapstruct.ap.test.complex._target.MakeDto;
 import org.mapstruct.ap.test.complex._target.PersonDto;
 import org.mapstruct.ap.test.complex.other.DateMapper;
 import org.mapstruct.ap.test.complex.source.Car;
+import org.mapstruct.ap.test.complex.source.Make;
 import org.mapstruct.ap.test.complex.source.Person;
 import org.mapstruct.factory.Mappers;
 
@@ -46,4 +48,8 @@ public interface CarMapper {
 
     @InheritInverseConfiguration
     List<Person> personDtosToPersons(List<PersonDto> personDtos);
+
+    MakeDto makeToMakeDto(Make make);
+
+    Make makeDtoToMake(MakeDto make);
 }

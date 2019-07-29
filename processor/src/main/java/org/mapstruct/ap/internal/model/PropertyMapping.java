@@ -16,6 +16,7 @@ import javax.lang.model.element.ExecutableElement;
 import org.mapstruct.ap.internal.model.assignment.AdderWrapper;
 import org.mapstruct.ap.internal.model.assignment.ArrayCopyWrapper;
 import org.mapstruct.ap.internal.model.assignment.EnumConstantWrapper;
+import org.mapstruct.ap.internal.model.assignment.ConstructorWrapper;
 import org.mapstruct.ap.internal.model.assignment.GetterWrapperForCollectionsAndMaps;
 import org.mapstruct.ap.internal.model.assignment.SetterWrapper;
 import org.mapstruct.ap.internal.model.assignment.StreamAdderWrapper;
@@ -146,6 +147,10 @@ public class PropertyMapping extends ModelElement {
 
         protected boolean isFieldAssignment() {
             return targetWriteAccessorType == AccessorType.FIELD;
+        }
+
+        protected boolean isConstructorMapping() {
+            return targetWriteAccessorType == AccessorType.INSTANTIATOR;
         }
     }
 
@@ -410,7 +415,10 @@ public class PropertyMapping extends ModelElement {
 
             Assignment result;
 
-            if ( targetAccessorType == AccessorType.SETTER || targetAccessorType == AccessorType.FIELD ) {
+            if ( isConstructorMapping() ) {
+                result = new ConstructorWrapper( rightHandSide, method.getThrownTypes() );
+            }
+            else if ( targetAccessorType == AccessorType.SETTER || targetAccessorType == AccessorType.FIELD ) {
                 result = assignToPlainViaSetter( targetType, rightHandSide );
             }
             else {
@@ -889,6 +897,9 @@ public class PropertyMapping extends ModelElement {
                         assignment = new SetterWrapper( assignment, method.getThrownTypes(), isFieldAssignment() );
                     }
                 }
+                else if ( targetWriteAccessor.getAccessorType() == AccessorType.INSTANTIATOR) {
+                    assignment = new ConstructorWrapper( assignment, method.getThrownTypes() );
+                }
                 else {
 
                     // target accessor is getter, so getter map/ collection handling
@@ -979,6 +990,9 @@ public class PropertyMapping extends ModelElement {
                 // setter, so wrap in setter
                 assignment = new SetterWrapper( assignment, method.getThrownTypes(), isFieldAssignment() );
             }
+            else if ( targetWriteAccessor.getAccessorType() == AccessorType.INSTANTIATOR) {
+                assignment = new ConstructorWrapper( assignment, method.getThrownTypes() );
+            }
             else {
                 // target accessor is getter, so wrap the setter in getter map/ collection handling
                 assignment = new GetterWrapperForCollectionsAndMaps( assignment,
@@ -1007,14 +1021,13 @@ public class PropertyMapping extends ModelElement {
                             Type targetType, Assignment propertyAssignment,
                             List<String> dependsOn, Assignment defaultValueAssignment ) {
         this( name, null, targetWriteAccessorName, targetReadAccessorProvider,
-            targetType, propertyAssignment, dependsOn, defaultValueAssignment
-        );
+            targetType, propertyAssignment, dependsOn, defaultValueAssignment );
     }
 
     private PropertyMapping(String name, String sourceBeanName, String targetWriteAccessorName,
                             ValueProvider targetReadAccessorProvider, Type targetType,
                             Assignment assignment,
-        List<String> dependsOn, Assignment defaultValueAssignment) {
+                            List<String> dependsOn, Assignment defaultValueAssignment) {
         this.name = name;
         this.sourceBeanName = sourceBeanName;
         this.targetWriteAccessorName = targetWriteAccessorName;
@@ -1055,6 +1068,10 @@ public class PropertyMapping extends ModelElement {
 
     public Assignment getDefaultValueAssignment() {
         return defaultValueAssignment;
+    }
+
+    public boolean isConstructorMapping() {
+        return assignment instanceof ConstructorWrapper; // TODO refactor
     }
 
     @Override

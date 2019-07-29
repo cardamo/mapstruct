@@ -121,7 +121,7 @@ public class DiagnosticDescriptor {
             return uri;
         }
 
-        //Make the URI absolute in case it isn't (the case with JDK 6)
+        //MakeDto the URI absolute in case it isn't (the case with JDK 6)
         try {
             return new URI( "file:" + uri.toString() );
         }

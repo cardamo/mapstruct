@@ -15,10 +15,12 @@ import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mapstruct.ap.test.complex._target.CarDto;
+import org.mapstruct.ap.test.complex._target.MakeDto;
 import org.mapstruct.ap.test.complex._target.PersonDto;
 import org.mapstruct.ap.test.complex.other.DateMapper;
 import org.mapstruct.ap.test.complex.source.Car;
 import org.mapstruct.ap.test.complex.source.Category;
+import org.mapstruct.ap.test.complex.source.Make;
 import org.mapstruct.ap.test.complex.source.Person;
 import org.mapstruct.ap.testutil.WithClasses;
 import org.mapstruct.ap.testutil.runner.AnnotationProcessorTestRunner;
@@ -28,6 +30,8 @@ import org.mapstruct.ap.testutil.runner.AnnotationProcessorTestRunner;
     CarDto.class,
     Person.class,
     PersonDto.class,
+    Make.class,
+    MakeDto.class,
     CarMapper.class,
     Category.class,
     DateMapper.class
@@ -56,7 +60,7 @@ public class CarMapperTest {
 
         //then
         assertThat( carDto ).isNotNull();
-        assertThat( carDto.getMake() ).isEqualTo( car.getMake() );
+        assertThat( carDto.getMake().getName() ).isEqualTo( car.getMake().getName() );
     }
 
     @Test
@@ -182,12 +186,12 @@ public class CarMapperTest {
         assertThat( dtos ).isNotNull();
         assertThat( dtos ).hasSize( 2 );
 
-        assertThat( dtos.get( 0 ).getMake() ).isEqualTo( "Morris" );
+        assertThat( dtos.get( 0 ).getMake().getName() ).isEqualTo( "Morris" );
         assertThat( dtos.get( 0 ).getSeatCount() ).isEqualTo( 2 );
         assertThat( dtos.get( 0 ).getManufacturingYear() ).isEqualTo( "1980" );
         assertThat( dtos.get( 0 ).getDriver().getName() ).isEqualTo( "Bob" );
 
-        assertThat( dtos.get( 1 ).getMake() ).isEqualTo( "Railton" );
+        assertThat( dtos.get( 1 ).getMake().getName() ).isEqualTo( "Railton" );
         assertThat( dtos.get( 1 ).getSeatCount() ).isEqualTo( 4 );
         assertThat( dtos.get( 1 ).getManufacturingYear() ).isEqualTo( "1934" );
         assertThat( dtos.get( 1 ).getDriver().getName() ).isEqualTo( "Bill" );
@@ -206,12 +210,12 @@ public class CarMapperTest {
         assertThat( cars ).isNotNull();
         assertThat( cars ).hasSize( 2 );
 
-        assertThat( cars.get( 0 ).getMake() ).isEqualTo( "Morris" );
+        assertThat( cars.get( 0 ).getMake().getName() ).isEqualTo( "Morris" );
         assertThat( cars.get( 0 ).getNumberOfSeats() ).isEqualTo( 2 );
         assertThat( cars.get( 0 ).getManufacturingDate() ).isEqualTo( new GregorianCalendar( 1980, 0, 1 ).getTime() );
         assertThat( cars.get( 0 ).getDriver().getName() ).isEqualTo( "Bob" );
 
-        assertThat( cars.get( 1 ).getMake() ).isEqualTo( "Railton" );
+        assertThat( cars.get( 1 ).getMake().getName() ).isEqualTo( "Railton" );
         assertThat( cars.get( 1 ).getNumberOfSeats() ).isEqualTo( 4 );
         assertThat( cars.get( 1 ).getManufacturingDate() ).isEqualTo( new GregorianCalendar( 1934, 0, 1 ).getTime() );
         assertThat( cars.get( 1 ).getDriver().getName() ).isEqualTo( "Bill" );

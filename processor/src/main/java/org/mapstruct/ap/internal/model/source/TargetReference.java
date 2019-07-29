@@ -25,6 +25,7 @@ import org.mapstruct.ap.internal.util.Message;
 import org.mapstruct.ap.internal.util.Strings;
 import org.mapstruct.ap.internal.util.accessor.Accessor;
 import org.mapstruct.ap.internal.util.accessor.AccessorType;
+import org.mapstruct.ap.internal.util.accessor.InstantiatorAccessor;
 
 /**
  * This class describes the target side of a property mapping.
@@ -253,6 +254,9 @@ public class TargetReference {
                     (DeclaredType) typeBasedOnMethod( initial ).getTypeMirror(),
                     toUse
                 );
+            }
+            else if (toUse.getAccessorType() == AccessorType.INSTANTIATOR) {
+                nextType = ((InstantiatorAccessor) toUse).getParameter().getType();
             }
             else {
                 nextType = typeFactory.getSingleParameter(
